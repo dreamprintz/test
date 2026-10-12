@@ -5,9 +5,10 @@ import { Download, FileUp, RotateCcw } from 'lucide-react';
 import { db } from '../db/db';
 import { existingPhoneMap, importRows, suppressedSet, type ExistingStrategy } from '../db/contacts';
 import { createList } from '../db/lists';
-import { dedupeKeys, detectMapping, issuesCsv, parseCsvFile, summarize, validateRows, type ColumnMapping, type ImportRow, type MappingTarget, type ParsedCsv, type RowStatus } from '../lib/csv';
+import { dedupeKeys, detectMapping, issuesCsv, parseCsvFile, summarize, type ColumnMapping, type ImportRow, type MappingTarget, type ParsedCsv, type RowStatus } from '../lib/csv';
+import { useValidation } from '../ui/useValidation';
 import type { ConsentStatus } from '../lib/types';
-import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Stat, Textarea, cx, useAction, useToast } from '../ui/components';
+import { Alert, Badge, Button, Card, Field, Input, PageHeader, Select, Spinner, Stat, Textarea, cx, useAction, useToast } from '../ui/components';
 import { downloadText } from '../ui/download';
 import { Pager, usePage } from '../ui/Pager';
 import { useSettings } from '../ui/settingsContext';
@@ -75,15 +76,7 @@ export default function ImportContacts() {
     void load(f, encoding);
   };
 
-  const phoneCount = mapping.filter((m) => m.target === 'phone').length;
-  const { rows, validationError } = useMemo((): { rows: ImportRow[]; validationError?: string } => {
-    if (!parsed || phoneCount !== 1) return { rows: [], validationError: parsed ? 'Map exactly one column to Phone.' : undefined } as { rows: ImportRow[]; validationError?: string };
-    try {
-      return { rows: validateRows(parsed, mapping, { defaultCountry: settings.defaultCountry, existingPhones: existing, suppressedPhones: suppressed }) };
-    } catch (e) {
-      return { rows: [], validationError: e instanceof Error ? e.message : String(e) };
-    }
-  }, [parsed, mapping, settings.defaultCountry, existing, suppressed, phoneCount]);
+  const { rows, error: validationError, validating } = useValidation(parsed, mapping, settings.defaultCountry, existing, suppressed);
 
   useEffect(() => {
     setSelected(new Set(rows.filter((r) => r.status === 'valid' || r.status === 'existing').map((r) => r.rowNumber)));
@@ -214,6 +207,8 @@ export default function ImportContacts() {
 
           {validationError ? (
             <Alert tone="red" title="Mapping incomplete">{validationError}</Alert>
+          ) : validating && rows.length === 0 ? (
+            <Card><Spinner label={`Validating ${parsed.rows.length.toLocaleString()} rows…`} /></Card>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -309,7 +304,7 @@ export default function ImportContacts() {
                 </div>
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                   <p className="text-sm text-slate-500">{selected.size.toLocaleString()} selected · {summary.invalid} invalid row(s) can't be imported; export them to fix and re-import.</p>
-                  <Button variant="primary" loading={busy} disabled={selected.size === 0} onClick={() => void doImport()}>Import {selected.size.toLocaleString()} contact(s)</Button>
+                  <Button variant="primary" loading={busy} disabled={selected.size === 0 || validating} onClick={() => void doImport()}>Import {selected.size.toLocaleString()} contact(s)</Button>
                 </div>
               </Card>
             </>

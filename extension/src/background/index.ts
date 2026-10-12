@@ -42,7 +42,9 @@ chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === ALARM) void tick();
 });
 
-chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: unknown, sender, sendResponse) => {
+  // Only accept messages from this extension's own pages.
+  if (sender.id !== chrome.runtime.id) return false;
   if (msg && typeof msg === 'object' && (msg as { type?: string }).type === 'cloud-queue-kick') {
     void ensureAlarm();
     void tick().then(() => sendResponse({ ok: true }));

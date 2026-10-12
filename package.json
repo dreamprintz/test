@@ -1,0 +1,11 @@
+{
+  "name": "wa-campaign-manager",
+  "private": true,
+  "description": "Chrome extension + optional backend for consent-based personalised WhatsApp campaigns.",
+  "scripts": {
+    "install:all": "npm --prefix extension ci && npm --prefix backend ci",
+    "test": "npm --prefix extension test && npm --prefix backend test",
+    "build": "npm --prefix extension run build && npm --prefix backend run build",
+    "e2e": "npm --prefix extension run e2e && npm --prefix extension run e2e:cloud"
+  }
+}
